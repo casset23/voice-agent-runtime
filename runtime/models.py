@@ -10,8 +10,8 @@ class DemoModel:
     async def plan(self, text):
         if any(word in text.lower() for word in ("几点", "时间", "time")):
             return {"tool": "get_time", "arguments": {"timezone": "Asia/Shanghai"}}
-        level = re.search(r"(?:音量|volume)\s*(\d{1,3})", text.lower())
-        if level:
+        level = re.fullmatch(r"(?:音量|volume)\s*(\d+)", text.strip().lower())
+        if level and int(level.group(1)) <= 100:
             return {"tool": "set_volume", "arguments": {"level": int(level.group(1))}}
         return {"tool": "unsupported", "arguments": {}}
 

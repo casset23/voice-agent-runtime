@@ -3,6 +3,7 @@ import logging
 import os
 import secrets
 import uuid
+import httpx
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -97,7 +98,7 @@ def create_app(*, token=None, model=None, capacity=8, timeout=20):
             action = await asyncio.wait_for(model.plan(body.text), timeout=timeout)
             result = execute(action)
             return {"request_id": request.state.request_id, "tool": action["tool"], "result": result}
-        except TimeoutError:
+        except (TimeoutError, httpx.TimeoutException):
             raise HTTPException(504, "Model deadline exceeded")
         except (ValueError, ValidationError, KeyError, TypeError):
             raise HTTPException(502, "Model returned an invalid or unsupported action")

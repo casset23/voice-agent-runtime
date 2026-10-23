@@ -35,3 +35,8 @@ def test_provider_requires_credential(monkeypatch):
     monkeypatch.delenv('LLM_API_KEY', raising=False)
     with pytest.raises(ValueError, match='LLM_API_KEY'):
         asyncio.run(OpenAIModel().plan('time'))
+
+
+@pytest.mark.parametrize('text', ['volume1000', 'volume30.5', '音量-30'])
+def test_invalid_volume_is_not_truncated(text):
+    assert asyncio.run(DemoModel().plan(text))['tool'] == 'unsupported'

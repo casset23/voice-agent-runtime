@@ -84,3 +84,19 @@ def test_missing_token_fails_startup(monkeypatch):
     monkeypatch.delenv("AGENT_API_TOKEN", raising=False)
     with pytest.raises(ValueError, match="AGENT_API_TOKEN"):
         create_app()
+
+
+def test_provider_timeout_maps_to_504_and_releases_capacity():
+    class Provider(Model):
+        fail = True
+        async def plan(self, text):
+            if self.fail:
+                raise httpx.ReadTimeout('provider stalled')
+            return await super().plan(text)
+    provider = Provider()
+    app = create_app(token='test-token', model=provider, capacity=1)
+    async def scenario():
+        assert (await request(app, {'text': 'time'})).status_code == 504
+        provider.fail = False
+        assert (await request(app, {'text': 'time'})).status_code == 200
+    run(scenario())
