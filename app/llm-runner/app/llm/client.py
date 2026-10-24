@@ -45,31 +45,63 @@ class Client:
         },
     }
 
-    @classmethod
-    def configure_from_runner(cls, items: List[Dict[str, Any]]) -> None:
-        """使用 resource-registry 的 runner 配置动态构建客户端注册表。
+    _active: Dict[int, int] = {}
+    _retired: Dict[int, Any] = {}
 
-    
-        """
+    @classmethod
+    async def configure_from_runner(cls, items: List[Dict[str, Any]]) -> None:
+        """替换模型注册表，在途调用结束后回收旧连接。"""
         registry: Dict[str, Dict[str, Any]] = {}
-        for item in items or []:
-            model_key = item.get('model') or item.get('id')
-            base_url = item.get('baseUrl')
-            api_key = item.get('apiKey')
-            if not model_key or not base_url:
-                continue
-            registry[model_key] = {
-                '_client': AsyncOpenAI(api_key=api_key or '', base_url=base_url),
-                'is_location': bool(item.get('isLocal')),
-            }
+        try:
+            for item in items or []:
+                model_key = item.get('model') or item.get('id')
+                base_url = item.get('baseUrl')
+                api_key = item.get('apiKey')
+                if not model_key or not base_url:
+                    continue
+                if model_key in registry:
+                    raise ValueError('Duplicate model key in runner configuration')
+                registry[model_key] = {
+                    '_client': AsyncOpenAI(api_key=api_key or 'not-required', base_url=base_url),
+                    'is_location': bool(item.get('isLocal')),
+                }
+        except Exception:
+            for config in registry.values():
+                await config['_client'].close()
+            raise
 
         if registry:
+            previous = cls._CLIENTS
             cls._CLIENTS = registry
             # 默认模型优先使用第一个 enabled 项的 model
             cls.DEFAULT_MODEL = next(iter(registry.keys()))
+            for config in previous.values():
+                client = config['_client']
+                cls._retired[id(client)] = client
+            for key in list(cls._retired):
+                await cls._close_if_idle(key)
             logger.info("LLM 客户端已从 runner 配置加载：%s", list(registry.keys()))
         else:
             logger.warning("Runner 未返回可用 LLM 配置，继续使用内置默认配置。")
+
+    @classmethod
+    async def _close_if_idle(cls, key: int) -> None:
+        if cls._active.get(key, 0) or key not in cls._retired:
+            return
+        client = cls._retired.pop(key)
+        try:
+            await client.close()
+        except Exception:
+            cls._retired[key] = client
+            logger.warning('Failed to close a retired model client')
+
+    @classmethod
+    async def close_all(cls) -> None:
+        for config in cls._CLIENTS.values():
+            client = config['_client']
+            cls._retired[id(client)] = client
+        for key in list(cls._retired):
+            await cls._close_if_idle(key)
 
 
 
@@ -135,7 +167,18 @@ class Client:
             'tool_choice': 'auto',
         }
 
-        response = await self.current_clients.chat.completions.create(**payload)
+        self.model = self._resolve_model(self.model)
+        payload['model'] = self.model
+        client = self._CLIENTS[self.model]['_client']
+        key = id(client)
+        self._active[key] = self._active.get(key, 0) + 1
+        try:
+            response = await client.chat.completions.create(**payload)
+        finally:
+            self._active[key] -= 1
+            if not self._active[key]:
+                del self._active[key]
+            await self._close_if_idle(key)
         return {
             'choices': response.choices,
             'model': response.model,

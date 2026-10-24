@@ -57,7 +57,7 @@ async def load_runner_configs() -> None:
         if lr.status_code == 200:
             data = lr.json() or {}
             items = data.get('items') or []
-            Client.configure_from_runner(items)
+            await Client.configure_from_runner(items)
 
 
 @asynccontextmanager
@@ -76,7 +76,10 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         print(f"LLM Runner ready: port={port} tools={len(tools)} default_model={Client.get_default_model()}")
     except Exception:
         pass
-    yield
+    try:
+        yield
+    finally:
+        await Client.close_all()
 
 
 app = FastAPI(
