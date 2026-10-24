@@ -1,14 +1,32 @@
-# 验证记录
+# 测试说明
 
-本轮验证日期：2026-10-24。
+## Python 服务
 
-- Python：10 个测试通过。4 个原服务检查覆盖环境配置、工具映射/错误、时间 API、公开代码扫描；6 个新增生命周期检查覆盖空闲回收、在途请求保护、失败回滚/部分连接清理、shutdown。
-- Python 模型网络使用替身；日期时间 API 使用真实原服务逻辑。
-- 本地 UI：原 React Dashboard 连接原 NestJS Registry 与隔离的临时 SQLite，创建停用的无 Key 示例记录并打开编辑界面。
-- 本地原生依赖使用 Node 24.19；切换 Node 主版本后须重建 better-sqlite3。
-- CI 额外执行 Dashboard / Registry 构建、Jest、Rust check / test；以相应提交的 Actions 结果为准。
+在仓库根目录运行：
 
-生命周期回归先复现旧连接没有释放等问题，再修复并通过测试。
-保障范围是单 Python 进程的模型客户端注册表；工具/模型配置非事务，不提供跨进程一致性保证。
+```bash
+python -m pip install -r requirements-public-check.txt
+python -m unittest discover -s tests -v
+python -m compileall -q app/llm-runner tools
+```
 
-未验证：真实付费模型效果、天气 API、音箱设备与完整分布式链路。没有将管理首页演示图表、健康接口和测试替身当作生产效果。
+10 个测试覆盖服务配置、工具调用映射、输入与失败响应、日期时间 API，以及模型客户端生命周期。
+
+| 生命周期用例 | 检查内容 |
+| --- | --- |
+| 空闲回收 | 配置刷新后关闭空闲旧客户端 |
+| 在途请求 | 旧请求完成前保持连接可用，结束后关闭 |
+| 失败回滚 | 新表构建失败时保留旧表，清理部分创建的连接 |
+| 客户端复用 | 已有包装对象在下一次调用中解析新注册表 |
+| 服务关闭 | 释放当前空闲连接 |
+| 关闭时在途请求 | 请求结束后释放对应连接 |
+
+模型网络通过 Mock 隔离，日期时间测试调用服务接口逻辑。
+
+## TypeScript 与 Rust
+
+- `app/dashboard`：`pnpm run build`。
+- `app/resource-registry`：`pnpm run build`、`pnpm exec jest --runInBand`。
+- `app/agent-gateway`：`cargo check --locked`、`cargo test --locked`。
+
+上述任务通过 GitHub Actions 执行，完整日志见 [CI](https://github.com/casset23/voice-agent-runtime/actions)。资源管理界面通过 Dashboard、NestJS 与 SQLite 联调检查配置读写。

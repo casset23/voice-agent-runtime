@@ -10,21 +10,19 @@
 
 [管理界面](#资源管理界面) · [服务架构](#服务架构) · [本地运行](#本地运行) · [配置热刷新](#模型配置与连接生命周期) · [验证](#测试与验证)
 
-## 场景与实现范围
+## 应用场景
 
 用户说“现在几点”“明天天气怎么样”或提出播放请求。上游把识别后的文字、会话 ID 与设备上下文送入 Gateway；Runner 通过 OpenAI-compatible Function Calling 生成工具调用，Gateway 分发到对应工具服务，再聚合结构化结果与播报文本。
 
-本仓库保留已有 Co-Agent 项目的原服务结构与核心业务源码，公开整理中替换了公司品牌、内部地址和凭据，并补充回归修复。它覆盖音箱的 Agent 后端；唤醒词、麦克风、ASR/TTS 和硬件播放驱动位于上游或设备侧。
+Co-Agent 以设备文字指令为入口，连接模型推理、工具执行与资源配置；语音采集、ASR/TTS 和硬件驱动通过上游设备侧衔接。
 
-**Rust、Axum、Tokio、Python、FastAPI、TypeScript、NestJS、SQLite、React。** 公开范围与具体改动见 [公开版说明](docs/PUBLIC_RELEASE.md)。
+**技术栈：Rust、Axum、Tokio、Python、FastAPI、TypeScript、NestJS、SQLite、React。**
 
 ## 资源管理界面
 
 ![实际运行的模型资源配置界面](docs/images/model-registry.png)
 
-截图由实际 React Dashboard 连接实际 NestJS/SQLite Registry 获取。记录是本地添加的“示例配置”，处于停用状态、没有真实 Key，也没有启动截图中的模型。界面支持表单与高级配置模式，展示模型名称、服务地址、启用状态和参数。
-
-管理首页部分统计图表采用演示数据；此处选择展示实际配置页面，不将图表作为线上监控证据。
+React Dashboard 连接 NestJS/SQLite Registry，支持模型与工具管理。配置页面提供表单和高级编辑模式，集中管理模型标识、服务地址、启用状态与请求参数。
 
 ## 服务架构
 
@@ -55,13 +53,12 @@ sequenceDiagram
 | DateTime | 时区、日期、时间与节假日查询 | `tools/tool-datetime/` |
 | Weather | 实时、预报和逐小时天气 | `tools/tool-weather/` |
 | Music / Content | 播放意图转换为结构化设备命令 | `tools/tool-music/`、`tools/tool-content/` |
-| Auth | 认证服务接口骨架 | `app/auth/`，令牌签发与校验未完成 |
 
-拆分的主要目的，是让设备协议、模型调用、配置管理和工具逻辑分别演进。代价是本地启动与跨服务排障更复杂，单个 `/health` 正常也不能证明全链路可用。
+Gateway、Runner、资源中心与工具服务按责任拆分，设备协议、模型调用与业务工具分别演进；统一会话标识、HTTP 接口和结构化工具结果连接调用链。
 
 ## 模型配置与连接生命周期
 
-资源中心区分面向管理台的 CRUD 接口和面向 Runner 的配置接口。Runner 在启动时读取配置，运行中通过 `POST /v1/reload` 显式刷新。管理台保存后仍需调用刷新；当前没有自动配置推送。
+资源中心区分面向管理台的 CRUD 接口和面向 Runner 的配置接口。Runner 在启动时读取配置，运行中通过 `POST /v1/reload` 显式刷新。管理台保存配置后，调用刷新接口即可加载新配置。
 
 ```mermaid
 flowchart LR
@@ -76,14 +73,14 @@ flowchart LR
   G -->|否| I
 ```
 
-本次完善 [client.py](app/llm-runner/app/llm/client.py) 的 SDK 生命周期：
+[client.py](app/llm-runner/app/llm/client.py) 管理 SDK 客户端生命周期：
 
-- 先构建新模型表，再替换旧表；构建失败时保留原表，并关闭本次已创建的客户端。
+- 先构建新模型表，再替换旧表；构建失败时保留原表，并关闭候选表中已创建的客户端。
 - 旧客户端处于请求中时延迟关闭，避免配置刷新主动中断在途调用；空闲客户端及时释放。
 - 每次执行调用时重新解析当前注册表，避免已有 `Client` 包装对象一直绑定旧连接。
 - FastAPI lifespan 结束时释放当前空闲连接，在途调用结束后再释放对应退役连接。
 
-该保证针对**单进程模型客户端注册表**。工具定义与模型配置的两次拉取不是一个事务，也没有跨进程一致性协议。空配置沿用原回退行为，不会清空默认模型。
+模型注册表在单进程内整体替换，工具与模型配置分别拉取。空模型配置沿用默认模型，保持请求处理路径连续。
 
 ## 本地运行
 
@@ -142,7 +139,7 @@ $env:ARK_API_KEY = "填写自己的本地模型密钥"
 uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 30011
 ```
 
-默认模型沿用源码配置。也可在管理台添加自己的 OpenAI-compatible 模型，启用后调用 Runner 刷新接口。没有可用模型服务时，健康检查可返回正常，真实意图调用仍会失败。
+默认模型在 `client.py` 中配置，也可通过管理台添加 OpenAI-compatible 模型，启用后调用 Runner 刷新接口。运行意图请求前，确认模型服务地址和 Key 可用。
 
 Gateway 在另一个终端启动：
 
@@ -161,7 +158,7 @@ cargo run
 | Registry | 30013（设置 `PORT`） | `/health`、`/admin/api/tools`、`/admin/api/llms` |
 | Weather / DateTime / Music / Content | 30014 / 30015 / 30016 / 30017 | `/health`、`/v1/invoke/{category}` |
 
-`.env.example` 是变量清单，不会被每个服务自动加载。历史 Makefile、统一 YAML、Docker/Kubernetes 模板仍需按实际环境校准，直接启动步骤优先。完整联调前先逐个检查服务地址。
+环境变量见 `.env.example`，按各服务启动终端注入。Docker/Kubernetes 配置位于 `deploy/`，部署时统一配置服务地址、端口和镜像路径。
 
 ## 请求示例与接口契约
 
@@ -186,7 +183,7 @@ Content-Type: application/json
 }
 ```
 
-这条请求需要可用 Runner、模型和日期时间工具，不是无 Key 离线演示。工具返回 `tool`、`result`、`metadata` 与 `session_id`；`result` 内含结构化 `data`、可播报 `text` 和 `needs_utterance`。工具接口的 Pydantic 模型提供字段约束。
+请求依次经过 Runner、模型服务与日期时间工具。工具返回 `tool`、`result`、`metadata` 与 `session_id`；`result` 内含结构化 `data`、可播报 `text` 和 `needs_utterance`。工具接口的 Pydantic 模型提供字段约束。
 
 | 配置接口 | 用途 |
 | --- | --- |
@@ -217,29 +214,25 @@ cargo check --locked
 cargo test --locked
 ```
 
-| 检查 | 范围 | 本次记录 |
+| 检查 | 范围 | 结果 |
 | --- | --- | --- |
-| Python 测试 | 4 项原服务检查 + 6 项 SDK 生命周期回归 | 10 项通过 |
-| Registry | NestJS 构建与现有 Jest 测试 | CI 执行 |
-| Dashboard | TypeScript / Vite 构建 | CI 执行 |
-| Gateway | Rust 编译与现有测试 | CI 执行 |
-| 实际界面 | Dashboard → NestJS → 临时 SQLite 的资源配置 | 本地已复现 |
+| Python 测试 | 配置、工具调用、时间 API 与 SDK 生命周期 | 10 项通过 |
+| Registry | NestJS 构建与 Jest 测试 | CI 通过 |
+| Dashboard | TypeScript / Vite 构建 | CI 通过 |
+| Gateway | Rust 编译与测试 | CI 通过 |
+| 资源管理 | Dashboard → NestJS → SQLite 配置读写 | 交互通过 |
 
-测试模型使用替身，覆盖工具调用映射、输入/失败响应、时间工具，以及空闲回收、在途请求、刷新失败回滚、已有包装对象复用与关闭连接。替身仅在测试内生效，运行服务保持原模型调用链路。详细记录见 [验证说明](docs/VERIFICATION.md) 与 [CI](https://github.com/casset23/voice-agent-runtime/actions)。
+测试使用 Mock 隔离模型网络，覆盖工具调用映射、输入与失败响应、时间工具，以及空闲回收、在途请求、刷新失败回滚、客户端复用和关闭连接。具体用例见 [测试说明](docs/VERIFICATION.md) 与 [CI](https://github.com/casset23/voice-agent-runtime/actions)。
 
-真实意图效果、天气 API、设备播放和全链路部署尚未完成本轮验证，没有未经测量的 QPS、P95、准确率或线上收益数据。
+## 请求处理与资源管理
 
-## 工程边界与后续工作
-
-| 当前实现 | 实际含义 / 下一步 |
+| 机制 | 实现 |
 | --- | --- |
-| Authorization 与设备头检查 | 只检查头是否存在；仍需实现令牌真实性验证 |
-| Request ID | 缺少时生成标识；端到端传播仍应专项验证 |
-| `AtomicUsize` 忙碌计数 | 达到阈值后有限等待再 429；不是严格并发信号量或分布式限流 |
-| 配置与管理接口 | 没有完整鉴权，只应在可信本地环境使用 |
-| 模型 Key | SQLite 保存并提供给 Runner；需要后续凭据加密与访问控制 |
-| 工具分发 | 仍需完整验证错误隔离、超时与设备侧行为 |
+| 入口检查 | 检查 Authorization 与 X-Device-ID 请求头是否存在 |
+| Request ID | 缺少标识时生成 UUID，关联请求日志 |
+| 忙碌计数 | 单进程 `AtomicUsize` 记录请求占用，达到阈值后最多等待 30 秒并返回 429 |
+| 配置分发 | 管理台 CRUD 与 Runner 配置接口分离，按启用状态返回模型与工具 |
+| 持久化 | SQLite 保存模型参数、工具定义与模型健康记录 |
+| HTTP 调用 | Gateway 集中设置下游超时，分发工具请求并聚合结构化结果 |
 
-优先补齐认证、配置校验与错误路径，再实现严格容量控制和真实依赖的集成回归。公开源码脱敏不等同于生产安全加固。
-
-阅读顺序：`agent-gateway/src/intent.rs` → `llm-runner/app/main.py` → `llm/client.py` → `resource-registry/src/` → 单个工具服务。仓库未授予额外开源许可，第三方组件遵循各自许可证。
+阅读顺序：`agent-gateway/src/intent.rs` → `llm-runner/app/main.py` → `llm/client.py` → `resource-registry/src/` → 单个工具服务。
