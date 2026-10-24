@@ -1,0 +1,180 @@
+# Co-Agent 项目统一服务配置
+# 用于管理所有服务的端口、启动命令和连接关系
+
+# 环境配置
+env:
+  development:
+    host: "localhost"
+  production:
+    host: "0.0.0.0"
+
+# 核心服务配置
+services:
+  # API 网关服务
+  agent-gateway:
+    name: "Agent Gateway"
+    language: "rust"
+    port: 3456
+    path: "co-agent/app/agent-gateway"
+    startup:
+      development: "cargo run"
+      production: "cargo run --release"
+    dependencies:
+      - llm-runner
+      - resource-registry
+    connections:
+      llm_runner_api: "http://localhost:11001"
+      tool_weather_api: "http://localhost:11000"
+      tool_datetime_api: "http://localhost:11002"
+      tool_music_api: "http://localhost:11003"
+      tool_content_api: "http://localhost:11004"
+
+  # LLM 运行器服务
+  llm-runner:
+    name: "LLM Runner"
+    language: "python"
+    port: 11001
+    path: "co-agent/app/llm-runner"
+    startup:
+      development: "python -m app.main"
+      production: "uvicorn app.main:app --host 0.0.0.0 --port 11001"
+    dependencies:
+      - resource-registry
+    connections:
+      resource_registry_base_url: "http://localhost:3001"
+    environment:
+      RESOURCE_REGISTRY_BASE_URL: "http://localhost:3001"
+
+  # 资源注册中心
+  resource-registry:
+    name: "Resource Registry"
+    language: "nodejs"
+    port: 3001
+    path: "co-agent/app/resource-registry"
+    startup:
+      development: "pnpm run start:dev"
+      production: "pnpm run start:prod"
+    dependencies: []
+    environment:
+      PORT: 3001
+
+  # 前端仪表板
+  dashboard:
+    name: "Dashboard"
+    language: "react"
+    port: 5173
+    path: "co-agent/app/dashboard"
+    startup:
+      development: "pnpm run dev"
+      production: "pnpm run build && pnpm run preview"
+    dependencies:
+      - resource-registry
+    connections:
+      api_base_url: "http://localhost:3001"
+    proxy:
+      "/api": "http://localhost:3001"
+
+  # 认证服务 (暂时还没有,放在这里占位)
+  auth:
+    name: "Auth Service"
+    language: "nodejs"
+    port: 3002
+    path: "co-agent/app/auth"
+    startup:
+      development: "pnpm run dev"
+      production: "pnpm run start"
+    dependencies: []
+    environment:
+      PORT: 3002
+
+# 工具服务配置
+tools:
+  tool-weather:
+    name: "Weather Tool"
+    language: "python"
+    port: 11000
+    path: "co-agent/tools/tool-weather"
+    startup:
+      development: "python -m app.main"
+      production: "uvicorn app.main:app --host 0.0.0.0 --port 11000"
+    categories:
+      - "now"
+      - "forecast" 
+
+
+  tool-datetime:
+    name: "DateTime Tool"
+    language: "python"
+    port: 11002
+    path: "co-agent/tools/tool-datetime"
+    startup:
+      development: "python -m app.main"
+      production: "uvicorn app.main:app --host 0.0.0.0 --port 11002"
+    categories:
+      - "time"
+      - "date"
+
+  tool-music:
+    name: "Music Tool"
+    language: "python"
+    port: 11003
+    path: "co-agent/tools/tool-music"
+    startup:
+      development: "python main.py"
+      production: "uvicorn main:app --host 0.0.0.0 --port 11003"
+    categories:
+      - "play_music"
+      - "children"
+      - "dance"
+      - "whitenoise"
+      - "opera"
+      - "buddhist"
+      - "cantonese"
+
+  tool-content:
+    name: "Content Tool"
+    language: "python"
+    port: 11004
+    path: "co-agent/tools/tool-content"
+    startup:
+      development: "python main.py"
+      production: "uvicorn main:app --host 0.0.0.0 --port 11004"
+    categories:
+      - "Moral-stories"
+      - "Ancient-poetry"
+      - "Classical-Chinese-Enlightenment"
+      - "children-story"
+
+# 服务启动顺序
+startup_order:
+  1: ["resource-registry"]  # 首先启动资源注册中心
+  2: ["tool-weather", "tool-datetime", "tool-music", "tool-content"]  # 启动所有工具
+  3: ["llm-runner"]  # 启动LLM运行器
+  4: ["agent-gateway"]  # 启动API网关
+  5: ["dashboard"]  # 最后启动前端
+
+# 健康检查端点
+health_checks:
+  endpoints:
+    agent-gateway: "http://localhost:3456/health"
+    llm-runner: "http://localhost:11001/health"
+    resource-registry: "http://localhost:3001/health"
+    tool-weather: "http://localhost:11000/health"
+    tool-datetime: "http://localhost:11002/health"
+    tool-music: "http://localhost:11003/health"
+    tool-content: "http://localhost:11004/health"
+
+# 部署相关配置
+deployment:
+  # Docker 容器端口映射
+  docker:
+    agent-gateway: "3456:3456"
+    llm-runner: "11001:11001"
+    resource-registry: "3001:3001"
+    dashboard: "5173:5173"
+    tool-weather: "11000:11000"
+    tool-datetime: "11002:11002"
+    tool-music: "11003:11003"
+    tool-content: "11004:11004"
+  
+

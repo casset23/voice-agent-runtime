@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: co-agent-dev
+
+resources:
+- ../base
+
+patches:
+- path: deployment-patch.yaml
+  target:
+    kind: Deployment
+    name: tool-weather
+
+images:
+  - name: ghcr.io/casset23/tool-weather
+    newTag: 0.1.0-dev-e661782

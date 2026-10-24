@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: auth
+    labels:
+      app.kubernetes.io/name: auth  
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: auth
+        env:
+        - name: ENV
+          value: "development"
+        resources:
+          limits:
+            cpu: "250m"
+            memory: "128Mi"
+          requests:
+            cpu: "125m"
+            memory: "64Mi"

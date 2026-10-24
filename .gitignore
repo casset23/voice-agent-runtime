@@ -1,5 +1,32 @@
-.env
-.venv/
+# Python
 __pycache__/
-.pytest_cache/
 *.pyc
+.venv/
+
+# Rust
+/target/
+
+# Common
+.env
+.idea/
+.vscode/
+.cursor/
+.DS_Store
+
+*.iml
+
+.ruff_cache
+# Local credentials and runtime state
+**/.env
+**/.env.*
+!**/.env.example
+**/data/
+*.db
+*.sqlite*
+*.log
+**/node_modules/
+**/.venv/
+**/target/
+**/dist/
+**/__pycache__/
+.pytest_cache/

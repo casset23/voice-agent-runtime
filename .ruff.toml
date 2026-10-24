@@ -1,0 +1,87 @@
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+line-length = 120
+indent-width = 4
+
+target-version = "py313"
+
+[lint]
+select = [
+    "E4", "E7", "E9", "F",  # 基础规则
+    "I",      # 导入排序
+    "N",      # 命名规范
+    "UP",     # 现代Python语法
+    "B",      # 常见错误模式
+    "ASYNC",  # 异步最佳实践
+    "PERF",   # 性能优化
+    "S",      # 安全检查 (完整)
+    "D",      # 文档字符串
+    "ANN",    # 类型注解
+]
+ignore = [
+    "D100", "D101", "D102",  # 先忽略文档字符串要求
+    "ANN001", "ANN002",      # 先忽略类型注解要求
+    "S104", "S105", "S106",  # 忽略硬编码绑定地址等开发常见场景
+]
+
+fixable = ["ALL"]
+unfixable = []
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+extend-select = []
+
+task-tags = ["TODO", "FIXME", "XXX", "HACK"]
+
+[format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+
+[lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]        # 测试文件允许使用assert
+"**/main.py" = ["D100"]           # 主文件可以忽略模块文档
+"**/migrations/*.py" = ["N806"]   # 数据库迁移文件命名规则放宽
+
+[lint.flake8-quotes]
+inline-quotes = "single"          # 行内引号使用单引号
+multiline-quotes = "double"       # 多行字符串使用双引号
+
+[lint.isort]
+known-first-party = ["app", "tools"]  # 项目内部包
+force-single-line = false         # 允许多个导入在一行
+
+[lint.pydocstyle]
+convention = "google"             # 使用Google文档风格
+
+[lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends"]  # FastAPI依赖注入

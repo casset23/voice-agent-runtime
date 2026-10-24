@@ -1,0 +1,26 @@
+[project]
+name = "llm-runner"
+version = "0.1.0"
+description = "LLM Runner for Co-Agent System"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.116.1",
+    "uvicorn>=0.35.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+    "langgraph>=0.5.3",
+    # 记忆模块依赖
+    #    "aiosqlite>=0.19.0", # 异步SQLite支持
+    # 会话存储依赖
+    #    "redis>=5.0.0", # Redis 客户端
+    "openai>=1.98.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+# 忽略 __init__ 方法的返回类型注解检查，因为构造函数总是返回 None
+ignore = ["ANN204"]

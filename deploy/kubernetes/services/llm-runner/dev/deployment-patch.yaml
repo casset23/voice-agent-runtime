@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: llm-runner
+    labels:
+      app.kubernetes.io/name: llm-runner  
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: llm-runner
+        env:
+        - name: APP_ENV
+          value: "dev"
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"

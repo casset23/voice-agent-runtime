@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: agent-gateway
+    labels:
+      app.kubernetes.io/name: agent-gateway  
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: agent-gateway
+        env:
+        - name: ENV
+          value: "dev"
+        - name: RUST_LOG
+          value: "debug"
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+          requests:
+            cpu: "250m"
+            memory: "128Mi"

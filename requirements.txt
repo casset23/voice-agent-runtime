@@ -1,4 +1,32 @@
-fastapi==0.115.12
-uvicorn==0.34.2
-httpx==0.28.1
-tzdata>=2025.1
+# Co-Agent 项目管理工具依赖
+# 用于服务管理器和配置生成器
+
+# YAML 处理
+PyYAML>=6.0
+
+# HTTP 客户端（用于健康检查）
+aiohttp>=3.8.0
+
+# 进程管理
+psutil>=5.9.0
+
+# 配置文件处理
+python-dotenv>=1.0.0
+
+# 命令行参数解析（Python标准库，无需安装）
+# argparse
+
+# 文件路径处理（Python标准库，无需安装）  
+# pathlib
+
+# 异步编程（Python标准库，无需安装）
+# asyncio
+
+# 子进程管理（Python标准库，无需安装）
+# subprocess
+
+# 时间处理（Python标准库，无需安装）
+# time
+
+# JSON处理（Python标准库，无需安装）
+# json

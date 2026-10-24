@@ -1,0 +1,57 @@
+@import "../../global.css";
+
+.editor {
+	@apply flex-1;
+}
+
+.llmDialog {
+	@apply w-[90vw] h-[90vh] flex flex-col;
+}
+
+.editorContainer {
+	@apply flex-1 mt-2 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700;
+}
+
+.dialogActions {
+	@apply flex justify-end gap-2 mt-2;
+}
+
+.llmItem {
+	@apply border-b-[var(--gray-a6)] border-b-[1px];
+}
+
+.llmPageContainer {
+	@apply flex flex-col;
+}
+
+.llmHeader {
+	@apply flex gap-2 p-2 sticky top-[56px] z-1 backdrop-blur-md border-b-[var(--gray-a6)] border-b-[1px];
+}
+
+.loadingContainer {
+	@apply flex flex-col items-center justify-center w-full h-screen;
+}
+
+.statusBadge {
+	@apply px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.statusActive {
+	@apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+}
+
+.statusInactive {
+	@apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+}
+
+.statusError {
+	@apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+}
+
+.progressContainer {
+	@apply w-full h-2 bg-gray-200 rounded-full overflow-hidden dark:bg-gray-700;
+}
+
+.progressBar {
+	@apply h-full rounded-full;
+}

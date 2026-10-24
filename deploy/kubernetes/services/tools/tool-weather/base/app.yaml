@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: tool-weather
+    labels:
+      app.kubernetes.io/name: tool-weather
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app.kubernetes.io/name: tool-weather
+    template:
+        metadata:
+            labels:
+                app.kubernetes.io/name: tool-weather
+        spec:
+            containers:
+                - name: tool-weather
+                  image: ghcr.io/casset23/tool-weather:0.1.0
+                  ports:
+                      - containerPort: 11000
+                  env:
+                    - name: APP_ENV
+                      value: production
+                  livenessProbe:
+                      httpGet:
+                          path: /health
+                          port: 11000
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                  readinessProbe:
+                      httpGet:
+                          path: /health
+                          port: 11000
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+            imagePullSecrets:
+                - name: ghcr-secret
+            resources:
+                requests:
+                  cpu: "1"
+                  memory: "512Mi"
+                limits:
+                  cpu: "2"
+                  memory: "512Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: tool-weather
+spec:
+    selector:
+        app.kubernetes.io/name: tool-weather
+    ports:
+        - port: 80
+          targetPort: 11000
+    type: ClusterIP

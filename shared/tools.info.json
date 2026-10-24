@@ -1,0 +1,65 @@
+[
+    {
+        "name": "tool-weather",
+        "display_name": "天气查询",
+        "category": [
+            {
+                "name": "now",
+                "parameters": [
+                    {
+                        "name": "city",
+                        "type": "string",
+                        "required": false,
+                        "description": "城市名称，可为空，表示取默认（如设备位置）"
+                    }
+                ]
+            },
+            {
+                "name": "forecast",
+                "parameters": [
+                    {
+                        "name": "city",
+                        "type": "string",
+                        "required": false,
+                        "description": "城市名称，可为空，表示取默认（如设备位置）"
+                    },
+                    {
+                        "name": "days",
+                        "type": "integer",
+                        "required": true,
+                        "description": "查询第几天的天气（当天为0，1为明天，依次类推）"
+                    }
+                ]
+            }
+        ],
+        "version": "0.1.0",
+        "description": "提供实时天气(now)、天气预报(forecast)等功能"
+    },
+    [
+        [
+            {
+                "name": "tool-datetime",
+                "display_name": "时间日期查询",
+                "category": [
+                    {
+                        "name": "time",
+                        "parameters": []
+                    },
+                    {
+                        "name": "date",
+                        "parameters": [
+                            {
+                                "name": "day_offset",
+                                "type": "integer",
+                                "required": true,
+                                "description": "相对于今天的天数偏移（0=今天，-1=昨天，1=明天）"
+                            }
+                        ]
+                    }
+                ],
+                "version": "0.1.0",
+                "description": "提供当前时间（time）和日期（date）查询服务"
+            }
+        ]
+    ]
+]

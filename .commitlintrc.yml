@@ -1,0 +1,60 @@
+# Commitlint配置 - 基于Conventional Commits规范
+extends:
+    - '@commitlint/config-conventional'
+
+rules:
+  # 允许的提交类型
+  type-enum:
+    - 2
+    - always
+    - [
+        'feat',       # 新功能
+        'fix',        # 修复问题
+        'docs',       # 文档更新
+        'style',      # 代码格式调整（不影响功能）
+        'refactor',   # 代码重构
+        'test',       # 测试相关
+        'chore',      # 构建工具、依赖更新
+        'perf',       # 性能优化
+        'ci',         # CI配置文件和脚本修改
+        'build',      # 构建系统或外部依赖变更
+        'revert',     # 回滚之前的提交
+        'init',       # 仓库初始化
+        'dependencies'# 依赖，支持 github bot 自动添加
+      ]
+
+  # 允许的scope（可选）
+  scope-enum:
+    - 2
+    - always
+    - [
+        'agent-gateway',  # agent-gateway相关
+        'llm-runner',     # llm-runner相关
+        'tool-weather',   # 天气工具
+        'tool-datetime',  # 时间工具
+        'tool-music',     # 音乐工具
+        'dashboard',      # 前端管理面板
+        'docs',           
+
+        'auth', 'resource-registry'
+      ]
+
+  # 主题长度限制
+  subject-min-length: [2, 'always', 5]
+  subject-max-length: [2, 'always', 72]
+
+  # 主题格式（小写开头，无句号）
+  subject-case: [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']]
+  subject-full-stop: [2, 'never', '.']
+
+  # 正文格式
+  body-leading-blank: [2, 'always']
+  body-max-line-length: [2, 'always', 100]
+
+  # 页脚格式
+  footer-leading-blank: [2, 'always']
+  footer-max-line-length: [2, 'always', 100]
+
+# 自定义消息
+defaultIgnores: true
+helpUrl: 'https://www.conventionalcommits.org/'

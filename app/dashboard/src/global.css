@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* 将 TailwindCSS 默认的黑暗模式行为修改成跟随 Radix Theme 的主题 */
+@custom-variant dark (&:where(:global(.radix-themes.dark), :global(.radix-themes.dark *)));

@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: resource-registry
+    labels:
+      app.kubernetes.io/name: resource-registry  
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: resource-registry
+        env:
+        - name: ENV
+          value: "development"
+        resources:
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
+          requests:
+            cpu: "125m"
+            memory: "128Mi"

@@ -1,89 +1,151 @@
-# Voice Agent Runtime · 智能音箱指令后端演示
+# Co-Agent · 智能音箱 Agent 后端
 
-一条可以离线运行和测试的 **Gateway → LLM Runner → Tool Registry** 链路，聚焦鉴权、并发保护、超时回收和工具调用边界。
+面向智能音箱文字指令的多语言服务项目：**Rust Gateway → Python LLM Runner → 工具服务**，配套 NestJS/SQLite 资源中心与 React 管理台。
 
-**Python · FastAPI · asyncio · Pydantic · OpenAI-compatible API**
+**Rust · Axum · Tokio · Python · FastAPI · TypeScript · NestJS · SQLite · React**
 
 [![CI](https://github.com/casset23/voice-agent-runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/casset23/voice-agent-runtime/actions/workflows/ci.yml)
 
-> 这是 2026-10-24 为个人作品集独立实现的演示版，使用 AI 辅助编码并补充自动化测试。没有复制公司项目源码、配置和数据，不代表既有实习项目的完整系统。当前输入为文字，语音采集和真实音箱驱动待接入。
+> 本仓库基于已有智能音箱项目源码整理，保留原服务结构与核心业务实现。公开版将硬编码凭据改为环境变量，替换内网地址和公司品牌、镜像路径，并排除内部数据与非项目材料。具体范围见 [公开版说明](docs/PUBLIC_RELEASE.md)。
 
-## 为什么做
+## 业务场景
 
-模型调用之外还需要回答后端问题：入口是否真的验证凭据，请求高峰是否拖垮服务，模型是否返回未授权工具，超时后是否回收配额。这个演示用一条最小链路让这些行为能够直接测试。
+用户说“现在几点”“明天天气怎么样”或提出播放请求，上游完成语音识别后，把文字、会话 ID 和上下文提交给 Gateway。LLM Runner 根据工具定义识别意图，Gateway 调用对应微服务，返回结构化结果和可播报文本。
+
+本仓库覆盖音箱的 Agent 后端；唤醒词、麦克风采集、ASR/TTS 和硬件播放驱动位于上游或设备侧。音乐和内容服务返回播放命令，不直接播放真实音频。
 
 ```mermaid
-flowchart LR
-  A[ASR 上游文字 / HTTP] --> B[Gateway: Token / Request ID / 配额]
-  B --> C[LLM Runner: 规则或 JSON 模型]
-  C --> D[工具白名单 / 严格参数校验]
-  D --> E[时间查询 / 模拟音量]
+sequenceDiagram
+  participant D as 设备 / 文本客户端
+  participant G as Rust Gateway
+  participant L as Python LLM Runner
+  participant R as 资源中心
+  participant T as 工具服务
+  L->>R: 拉取模型和工具配置
+  D->>G: text + session_id + metadata
+  G->>L: POST /v1/intent
+  L-->>G: 工具名称、类别和参数
+  G->>T: POST /v1/invoke/{category}
+  T-->>G: 结构化结果 + 播报文本 / 命令
+  G-->>D: 聚合响应
 ```
 
-组件采用同一进程中的逻辑分层，便于复现。默认规则模式不调用 LLM；OpenAI 模式请求配置的兼容模型接口。
+## 代码看点
 
-## 运行
+| 模块 | 实现内容 | 阅读入口 |
+| --- | --- | --- |
+| Agent Gateway | 请求头检查、Request ID、LLM 调度、工具结果聚合、下游 HTTP 超时 | `app/agent-gateway/src/intent.rs`、`client.rs`、`middleware.rs` |
+| LLM Runner | OpenAI-compatible 模型接入、Function Calling 解析、模型与工具配置热刷新 | `app/llm-runner/app/main.py`、`app/llm-runner/app/llm/client.py` |
+| Resource Registry | 模型/工具 CRUD、启用状态、模型健康与延迟记录、Runner 配置分发 | `app/resource-registry/src/LLM/`、`src/tools/`、`src/db/` |
+| Dashboard | 模型与工具管理、JSON Schema 编辑、健康状态展示 | `app/dashboard/src/pages/` |
+| 天气 / 日期时间 | 实时、预报、逐小时天气；时区、日期与节假日查询 | `tools/tool-weather/`、`tools/tool-datetime/` |
+| 音乐 / 内容 | 将播放意图转换为结构化设备命令 | `tools/tool-music/`、`tools/tool-content/` |
+| Auth | 认证服务入口和接口骨架 | `app/auth/`，当前尚未完成令牌签发与校验 |
 
-Python 3.11+：
+Gateway 当前只检查 Authorization 和设备标识请求头是否存在，不验证 Token 的真实性。`AtomicUsize` 用于忙碌计数；达到 1000 后最多等待 30 秒再返回 429，它不是严格的分布式限流器或完成压测的吞吐保证。管理首页部分图表采用演示数据，不能当作真实监控结果。
 
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-```
+## 运行环境与端口
 
-PowerShell：
+- Python **3.12+**：原工具模型采用泛型类新语法。
+- Rust stable，支持 **Edition 2024**。
+- Node.js 22+、pnpm 10，SQLite 为本地文件。
+
+| 服务 | 端口 | 入口 |
+| --- | ---: | --- |
+| Gateway | 30010 | `/health`、`/v1/intent`、`/openapi.json` |
+| LLM Runner | 30011 | `/health`、`/v1/intent`、`/v1/reload` |
+| Dashboard | 30012 | 浏览器页面 |
+| Registry | 30013（通过 PORT 设置） | `/health`、`/admin/api/tools`、`/admin/api/llms` |
+| Weather / DateTime / Music / Content | 30014 / 30015 / 30016 / 30017 | `/health`、`/v1/invoke/{category}` |
+
+## 本地启动
+
+建议先运行 Registry、时间工具和 Runner，再启动 Gateway 和 Dashboard。每个 Python 服务使用独立环境，可在对应目录运行 `uv sync` 后执行 `uv run python -m uvicorn ...`。下面以已安装依赖的终端为例。
+
+Registry：
 
 ```powershell
-$env:AGENT_API_TOKEN = python -c "import secrets; print(secrets.token_urlsafe(32))"
-python -m uvicorn runtime.api:create_app --factory --host 127.0.0.1 --port 8000
+cd app/resource-registry
+pnpm install --frozen-lockfile
+$env:PORT = "30013"
+pnpm start:dev
 ```
 
-在另一终端使用同一个 Token。打开 `/docs` 可通过 Authorize 输入它。跨平台 curl 示例：
+LLM Runner（另开终端）：
+
+```powershell
+cd app/llm-runner
+uv sync
+$env:RESOURCE_REGISTRY_BASE_URL = "http://127.0.0.1:30013"
+$env:ARK_API_KEY = "你的本地模型密钥"
+uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 30011
+```
+
+默认模型名称沿用源码配置。也可以在管理台添加可用模型，再通过 `POST /v1/reload` 刷新 Runner 配置。没有可用密钥时，健康接口可用，真实意图请求会失败；公开版不提供可工作的共享密钥。
+
+日期时间工具：
+
+```powershell
+cd tools/tool-datetime
+uv sync
+uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 30015
+```
+
+Gateway：
+
+```powershell
+cd app/agent-gateway
+cargo run
+```
+
+Dashboard：
+
+```powershell
+cd app/dashboard
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+其他工具按上表端口启动：天气使用 `app.main:app`，音乐和内容使用 `main:app`。天气服务需在本地设置 `SENIVERSE_API_KEY`。
+
+`.env.example` 是配置变量清单，默认不会被所有服务自动加载。使用环境变量，或由自己的启动脚本加载配置。历史 `Makefile`、统一 YAML、Docker/Kubernetes 文件仍需按实际环境核对，本 README 的直接启动步骤优先。
+
+## 请求示例
+
+```http
+POST http://127.0.0.1:30010/v1/intent
+Authorization: Bearer local-development-placeholder
+X-Device-ID: demo-device
+Content-Type: application/json
+```
+
+```json
+{
+  "text": "现在几点",
+  "session_id": "demo-session",
+  "metadata": {
+    "time_zone": "Asia/Shanghai",
+    "language": "zh-CN",
+    "platform": "demo-speaker-v1"
+  }
+}
+```
+
+公司品牌设备请求头在公开版统一改为 `X-Device-ID`，客户端需要使用该名称。服务结构和业务逻辑保持原实现，没有换成单进程规则演示。
+
+## 检查与已知边界
 
 ```bash
-curl http://127.0.0.1:8000/v1/commands \
-  -H "Authorization: Bearer YOUR_LOCAL_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"现在几点"}'
+python -m pip install -r requirements-public-check.txt
+python -m unittest discover -s tests -v
+python -m compileall -q app/llm-runner tools
+# app/dashboard: pnpm run build
+# app/resource-registry: pnpm run build && pnpm exec jest --runInBand
+# app/agent-gateway: cargo check --locked
 ```
 
-也支持 `{"text":"音量30"}`。音量工具返回 `{"level":30,"simulated":true}`，不操作真实设备。离线规则只识别这两类指令。
+新增检查针对原服务：环境变量配置、Runner 的工具名与参数映射、输入校验、模型失败响应、时间工具接口，以及公开文件扫描。测试中的模型调用使用替身，不消耗真实模型服务。
 
-## 真实模型
+真实模型效果、天气 API、音箱设备以及全链路部署尚未完成本次运行验证。管理和 Runner 配置接口没有完整鉴权，模型 Key 会持久化在本地 SQLite 中并提供给 Runner；当前仅在可信本地环境运行。公开源码脱敏不等同于生产安全加固。
 
-设置 `AGENT_MODEL_MODE=openai`、`LLM_API_KEY`、`LLM_BASE_URL`（以 `/v1` 结尾）和 `LLM_MODEL`，然后重启。`.env.example` 是变量清单，默认不自动读取 `.env`。兼容服务需要支持 `response_format=json_object`。
-
-真实模型联网与效果未在本次发布中验证；测试注入确定性规划器，不消耗外部 Token。模型结果始终经过白名单和参数校验。
-
-## 可检查的行为
-
-| 场景 | 结果 |
-| --- | --- |
-| 未配置入口 Token | 启动失败 |
-| 错误或缺失 Token | `401` |
-| 空指令 / 超过 2000 字符 | `422` |
-| 达到并发上限 | 有限等待后 `429`，附 `Retry-After` |
-| 模型超时 | `504`，回收配额 |
-| 未知工具、额外参数或越界音量 | `502`，拒绝执行 |
-| 正常请求 | 工具结果与 `X-Request-ID` |
-
-默认容量 8、规划超时 20 秒，可通过 `create_app(capacity=..., timeout=...)` 调整。容量属于单个应用进程，多 worker 不共享配额，不等同于分布式限流或压测结论。
-
-`GET /health` 无需鉴权；`GET /v1/resources` 和 `POST /v1/commands` 需要 Bearer Token。资源接口返回工具 JSON Schema。
-
-## 测试与阅读顺序
-
-```bash
-python -m pytest -q
-```
-
-测试覆盖正常调用、真实 Token 比较、输入边界、工具白名单、严格整数、无效时区、超时后恢复与并发饱和后恢复。
-
-1. `runtime/api.py`：入口治理、Schema、工具执行。
-2. `runtime/models.py`：规则规划器与模型适配。
-3. `tests/test_api.py`：接口与错误边界。
-4. `docs/design.md`：设计选择与公开范围。
-
-后续方向：接入 ASR/TTS 和真实设备，补充模型契约测试；存在明确跨进程需求后再拆服务。当前没有音乐服务、硬件驱动、多轮自主规划或线上性能数字。
+不提供未经测量的 QPS、P95、准确率或线上收益数据。

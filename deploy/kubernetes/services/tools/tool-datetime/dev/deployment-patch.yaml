@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: tool-datetime
+    labels:
+      app.kubernetes.io/name: tool-datetime
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: tool-datetime
+        env:
+        - name: APP_ENV
+          value: "dev"
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "1"
+            memory: "128Mi"  

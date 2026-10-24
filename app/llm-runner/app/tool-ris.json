@@ -1,0 +1,190 @@
+[
+    {
+        "type": "function",
+        "function": {
+            "name": "tool_weather",
+            "description": "获取天气信息",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "now": {
+                        "type": "object",
+                        "description": "用户想要获取实时天气",
+                        "properties": {
+                            "city": {
+                                "type": "string",
+                                "description": "用户明确提到的城市名，如果没有，则为空。"
+                            }
+                        },
+                        "required": []
+
+                       
+                    },
+                    "forecast": {
+                        "type": "object",
+                        "description": "用户想要获取天气预报",
+                        "properties": {
+                            "city": {
+                                "type": "string",
+                                "description": "用户明确提到的城市名，如果没有，则为空。"
+                            },
+                            "days": {
+                                "type": "integer",
+                                "description": "第几天的预报。days=1 -> 今天"
+                            }
+                        },
+                        "required": ["days"]
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "tool_datetime",
+            "description": "获取时间日期信息",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "time": {
+                        "type": "object",
+                        "description": "获取当前时间",
+                        "properties": {},
+                        "required": []
+                    },
+                    "date": {
+                        "type": "object",
+                        "description": "获取指定日期",
+                        "properties": {
+                            "day_offset": {
+                                "type": "integer",
+                                "description": "相对于今天的天数偏移(0=今天，-1=昨天,1=明天）"
+                            }
+                        },
+                        "required": ["day_offset"]
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "tool_music",
+            "description": "播放音乐和音频内容",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kugou": {
+                        "type": "object",
+                        "description": "播放酷狗音乐中的音乐，包括播放音乐、下一曲、播放指定歌手的歌曲等功能",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "description": "操作类型:play(播放音乐)、next(下一曲)、artist(播放指定歌手歌曲)",
+                                "enum": ["play", "next", "artist"]
+                            },
+                            "artist": {
+                                "type": "string",
+                                "description": "歌手名称,当action为artist时使用"
+                            },
+                            "song": {
+                                "type": "string",
+                                "description": "歌曲名称，可选参数"
+                            }
+                        },
+                        "required": ["action"]
+                    },
+                    "children": {
+                        "type": "object",
+                        "description": "播放儿童音乐，包括儿歌等适合儿童的音乐内容",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "description": "儿童音乐类型，默认为儿歌",
+                                "default": "children_song"
+                            }
+                        },
+                        "required": []
+                    },
+                    "story": {
+                        "type": "object",
+                        "description": "播放故事音频，包括睡前故事等",
+                        "properties": {
+                            "story_type": {
+                                "type": "string",
+                                "description": "故事类型:bedtime(睡前故事)、fairy_tale(童话故事)等",
+                                "default": "bedtime"
+                            }
+                        },
+                        "required": []
+                    },
+                    "dance": {
+                        "type": "object",
+                        "description": "播放舞蹈音乐，适合跳舞、表演舞蹈等场景",
+                        "properties": {
+                            "dance_type": {
+                                "type": "string",
+                                "description": "舞蹈类型:general(一般舞蹈)、performance(表演舞蹈)等",
+                                "default": "general"
+                            }
+                        },
+                        "required": []
+                    },
+                    "whitenoise": {
+                        "type": "object",
+                        "description": "播放白噪音和睡眠音乐，帮助放松和睡眠",
+                        "properties": {
+                            "noise_type": {
+                                "type": "string",
+                                "description": "白噪音类型:sleep_music(睡眠音乐)、white_noise(白噪音)、rain(雨声)等",
+                                "default": "sleep_music"
+                            }
+                        },
+                        "required": []
+                    },
+                    "opera": {
+                        "type": "object",
+                        "description": "播放粤剧等传统戏曲音乐",
+                        "properties": {
+                            "opera_type": {
+                                "type": "string",
+                                "description": "戏曲类型:cantonese_opera(粤剧)等",
+                                "default": "cantonese_opera"
+                            }
+                        },
+                        "required": []
+                    },
+                    "buddhist": {
+                        "type": "object",
+                        "description": "播放佛经音频，包括各种佛教经文朗诵",
+                        "properties": {
+                            "sutra_type": {
+                                "type": "string",
+                                "description": "佛经类型:heart_sutra(心经)、diamond_sutra(金刚经)等",
+                                "default": "heart_sutra"
+                            }
+                        },
+                        "required": []
+                    },
+                    "cantonese": {
+                        "type": "object",
+                        "description": "播放粤语歌曲和粤语音乐",
+                        "properties": {
+                            "artist": {
+                                "type": "string",
+                                "description": "粤语歌手名称，可选参数"
+                            },
+                            "song": {
+                                "type": "string",
+                                "description": "粤语歌曲名称，可选参数"
+                            }
+                        },
+                        "required": []
+                    }
+                }
+            }
+        }
+    }
+]
